@@ -1,1 +1,2 @@
-{ :rootpath "root" }
+{:rootpath "root"
+ :theme "minimal"}

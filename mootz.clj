@@ -7,21 +7,18 @@
 (def config (clojure.edn/read-string (slurp "config.edn")))
 
 (defn handler [request]
+  (println (:uri request))
   {:status 200
    :headers {"Content-Type" "text/html"}
-   :body "hi ring."})
+   :body (slurp (str "themes/" (:theme config) "/index.html"))})
 
 (defn -main
   [& args]
-
-  (println "hi mootz.")
-  (println (:rootpath config))
   (hawk/watch! [{:paths [(:rootpath config)]
                  :handler (fn [ctx e]
                             (println "event: "
                                      (.getAbsolutePath (:file e))
-                                     (:kind e))
-                            (println "context: "
+                                     (:kind e)
                                      ctx)
                             ctx)}])
 
