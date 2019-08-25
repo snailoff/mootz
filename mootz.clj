@@ -1,15 +1,16 @@
 (ns mootz
   (:gen-class)
-  (:require [clojure.edn]
+  (:require [base64-clj.core :as base64]
+            [clojure.edn]
             [clojure.java.io :as io]
-            [clojure.string :refer [replace]]
+            [clojure.string :refer :all]
             [hawk.core :as hawk])
   (:use ring.adapter.jetty))
 
 (def config (clojure.edn/read-string (slurp "config.edn")))
 
-(def index-file
-  (slurp (str "themes/" (:theme config) "/index.html")))
+(defn index-file []
+  (slurp (str "resources/themes/" (:theme config) "/index.html")))
 
 (defn special-file [name]
   (let [path (str (:rootpath config) "/" name)]
@@ -17,16 +18,56 @@
       (slurp path)
       "")))
 
+(defn mootz-path [uri]
+  (if (= uri "/")
+    ""
+    (str (:rootpath config)
+         "/"
+         (base64/decode (replace uri #"^/" ""))
+         ".mz")))
+
+(defn current-pagecontent [uri]
+  (println "uri: " uri)
+  (cond (.exists (io/file (mootz-path uri))) (slurp (mootz-path uri))
+        :else "no content"
+        ))
+
+(defn current-pagename [uri]
+  (if (= uri "/")
+    "no name"
+    (->
+      (base64/decode (replace uri #"^/" ""))
+      (replace #".*/" "")
+    )))
+
+(defn current-pagedate [uri]
+  (if (= uri "/")
+    "oooooooo oooooo"
+    (.lastModified (io/file
+                   (mootz-path uri)))))
+
+(defn current-pagepath [uri]
+  (join "<br />"
+        (map #(str "<b>" %1 "</b>")
+             (split (base64/decode (clojure.string/replace uri #"^/" "")) #"/"))
+
+   ))
 
 (defn render [request]
-  (let [content index-file]
-    (-> content
-        (replace #"__MAIN_NAME__" (special-file "_main_name"))
-        (replace #"__HEADER__" (special-file "_header"))
-        (replace #"__FOOTER__" (special-file "_footer")))))
+  (let [template (index-file)
+        pagecontent (current-pagecontent (:uri request))
+        pagename (current-pagename (:uri request))
+        pagedate (current-pagedate (:uri request))
+        pagepath (current-pagepath (:uri request))]
+
+    (-> template
+        (replace #"__PAGE_NAME__" (str "<h3>" pagename "</h3>"))
+        (replace #"__PAGE_CONTENT__" (str "<p>" pagecontent "</p>"))
+        (replace #"__PAGE_DATE__" (str "<small>" pagedate "</small>"))
+        (replace #"__PATH__" pagepath)
+        )))
 
 (defn handler [request]
-  (println (:uri request))
   {:status 200
    :headers {"Content-Type" "text/html"}
       :body (render request)})
@@ -42,5 +83,6 @@
                                      ctx)
                             ctx)}])
 
-  (run-jetty handler {:port 3000}))
+;;  (run-jetty handler {:port 3000})
+  )
 
