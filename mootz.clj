@@ -12,53 +12,62 @@
 (defn index-file []
   (slurp (str "resources/themes/" (:theme config) "/index.html")))
 
-(defn special-file [name]
-  (let [path (str (:rootpath config) "/" name)]
-    (if (.exists (io/file path))
-      (slurp path)
-      "")))
-
-(defn mootz-path [path]
+(defn real-path [path]
     (str (:rootpath config)
          "/"
-         path
-         ".mz"))
-
-(defn current-pagecontent [path]
-  (cond (.exists (io/file (mootz-path path))) (slurp (mootz-path path))
-        :else "no content"
-        ))
-
-(defn current-pagename [path]
-    (replace path #".*/" ""))
-
-(defn current-pagedate [path]
-    (.lastModified (io/file
-                   (mootz-path path))))
+         path))
 
 (defn current-pagepath [path]
     (join "<br />"
           (map #(str "<b>" %1 "</b>")
                (split path #"/"))))
 
-(defn decode-path [uri]
-  (if (= uri "/")
-    ""
-    (base64/decode
-     (replace uri #"^/" ""))
-    ))
+(defn parse-directory [path]
+  {:isdir true
+   :path path
+   :name (if (= path "") (:rootname config) (replace path #".*/" ""))
+   :content (if (.exists (io/file (real-path (str path "/_"))))
+              (slurp (real-path (str path "/_")))
+              "")
+   :date (.lastModified (io/file (real-path path)))
+   }
+  )
+
+(defn parse-file [path]
+  {:isdir false
+   :path path
+   :name (replace path #"^.*/|.mz$" "")
+   :content (slurp (real-path path))
+   :date (.lastModified (io/file (real-path path)))
+   }
+  )
+
+(defn parse-request [uri]
+  (try
+    (let [decoded (base64/decode (replace uri #"^/" ""))]
+      (if-not (.exists (io/file (real-path decoded))) (throw (Exception. "not exists")))
+
+      (if (.isDirectory (io/file decoded))
+        (parse-directory decoded)
+        (parse-file decoded))
+      )
+    (catch Exception e
+      (parse-directory ""))
+  ))
+
 
 
 (defn render [request]
-  (println "decode-path : " (decode-path (:uri request)))
+  (println "parse-path : " (parse-request "/"))
   (let [template (index-file)
-        dpath (decode-path (:uri request))]
+        parsed (parse-request (:uri request))
+        ]
 
     (-> template
-        (replace #"__PAGE_NAME__" (str "<h3>" (current-pagename dpath)"</h3>"))
-        (replace #"__PAGE_CONTENT__" (str "<p>" (current-pagecontent dpath)"</p>"))
-        (replace #"__PAGE_DATE__" (str "<small>" (current-pagedate dpath) "</small>"))
-        (replace #"__PATH__" (current-pagepath dpath))
+        (replace #"__PAGE_NAME__" (str "<h3>" (:name parsed)"</h3>"))
+        (replace #"__PAGE_CONTENT__" (str "<p>" (:content parsed)"</p>"))
+        (replace #"__PAGE_DATE__" (str "<small>" (:date parsed) "</small>"))
+;;        (replace #"__PATH__" (current-pagepath dpath))
         )))
 
 (defn handler [request]
