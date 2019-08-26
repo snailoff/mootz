@@ -18,53 +18,47 @@
       (slurp path)
       "")))
 
-(defn mootz-path [uri]
-  (if (= uri "/")
-    ""
+(defn mootz-path [path]
     (str (:rootpath config)
          "/"
-         (base64/decode (replace uri #"^/" ""))
-         ".mz")))
+         path
+         ".mz"))
 
-(defn current-pagecontent [uri]
-  (println "uri: " uri)
-  (cond (.exists (io/file (mootz-path uri))) (slurp (mootz-path uri))
+(defn current-pagecontent [path]
+  (cond (.exists (io/file (mootz-path path))) (slurp (mootz-path path))
         :else "no content"
         ))
 
-(defn current-pagename [uri]
-  (if (= uri "/")
-    "no name"
-    (->
-      (base64/decode (replace uri #"^/" ""))
-      (replace #".*/" "")
-    )))
+(defn current-pagename [path]
+    (replace path #".*/" ""))
 
-(defn current-pagedate [uri]
-  (if (= uri "/")
-    "oooooooo oooooo"
+(defn current-pagedate [path]
     (.lastModified (io/file
-                   (mootz-path uri)))))
+                   (mootz-path path))))
 
-(defn current-pagepath [uri]
-  (join "<br />"
-        (map #(str "<b>" %1 "</b>")
-             (split (base64/decode (clojure.string/replace uri #"^/" "")) #"/"))
+(defn current-pagepath [path]
+    (join "<br />"
+          (map #(str "<b>" %1 "</b>")
+               (split path #"/"))))
 
-   ))
+(defn decode-path [uri]
+  (if (= uri "/")
+    ""
+    (base64/decode
+     (replace uri #"^/" ""))
+    ))
+
 
 (defn render [request]
+  (println "decode-path : " (decode-path (:uri request)))
   (let [template (index-file)
-        pagecontent (current-pagecontent (:uri request))
-        pagename (current-pagename (:uri request))
-        pagedate (current-pagedate (:uri request))
-        pagepath (current-pagepath (:uri request))]
+        dpath (decode-path (:uri request))]
 
     (-> template
-        (replace #"__PAGE_NAME__" (str "<h3>" pagename "</h3>"))
-        (replace #"__PAGE_CONTENT__" (str "<p>" pagecontent "</p>"))
-        (replace #"__PAGE_DATE__" (str "<small>" pagedate "</small>"))
-        (replace #"__PATH__" pagepath)
+        (replace #"__PAGE_NAME__" (str "<h3>" (current-pagename dpath)"</h3>"))
+        (replace #"__PAGE_CONTENT__" (str "<p>" (current-pagecontent dpath)"</p>"))
+        (replace #"__PAGE_DATE__" (str "<small>" (current-pagedate dpath) "</small>"))
+        (replace #"__PATH__" (current-pagepath dpath))
         )))
 
 (defn handler [request]
