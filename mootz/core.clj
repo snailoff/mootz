@@ -3,6 +3,8 @@
   (:require [mootz.extensions :as ext]
             [mootz.util :as util]
             [base64-clj.core :as base64]
+            [clj-time.format :as timef]
+            [clj-time.coerce :as timec]
             [clojure.edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
@@ -18,6 +20,14 @@
 (defn full-path [path]
   (str (str/replace (:rootpath config) #"/+$" "")
          (str "/" path)))
+
+(defn date-string [path]
+  (if (.exists (io/file path))
+    (let [date (.lastModified (io/file path))]
+      (-> (timef/unparse (timef/formatter "yyyyMMdd hhmmss") (timec/from-long date))
+          (str/replace #"0" "o")))
+    "oooooooo oooooo"))
+
 
 (defn apply-extensions [content]
   (-> content
@@ -36,7 +46,7 @@
    :name (if (= path "") (:rootname config)
              (str/replace path #".*/" ""))
    :content (apply-extensions (util/slurp-exists (full-path (str path "/_"))))
-   :date (.lastModified (io/file (full-path path)))
+   :date (date-string (full-path path))
    })
 
 (defn parse-file [path]
