@@ -1,5 +1,6 @@
 (defproject rootm "0.1.0-SNAPSHOT"
   :dependencies [[base64-clj "0.1.1"]
+                 [markdown-clj "1.10.0"]
                  [org.clojure/clojure "1.10.0"]
                  [hawk "0.2.11"]
                  [ring "1.7.1"]
@@ -7,11 +8,11 @@
 
   :plugins [[lein-ring "0.12.5"]]
 
-  :source-paths ["."]
-  :main mootz
-  :aot [mootz]
+  :source-paths ["." "mootz"]
+  :main mootz.core
+  :aot [mootz.core]
   :clean-targets ^{:protect false} ["target"]
 
-  :ring {:handler mootz/handler}
+  :ring {:handler mootz.core/handler}
   )
 

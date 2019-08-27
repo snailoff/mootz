@@ -1,10 +1,13 @@
-(ns mootz
+(ns mootz.core
   (:gen-class)
-  (:require [base64-clj.core :as base64]
+  (:require [mootz.extensions :as ext]
+            [base64-clj.core :as base64]
             [clojure.edn]
             [clojure.java.io :as io]
             [clojure.string :refer :all]
-            [hawk.core :as hawk])
+            [hawk.core :as hawk]
+            )
+
   (:use ring.adapter.jetty))
 
 (def config (clojure.edn/read-string (slurp "config.edn")))
@@ -22,6 +25,8 @@
           (map #(str "<b>" %1 "</b>")
                (split path #"/"))))
 
+
+
 (defn parse-directory [path]
   {:isdir true
    :path path
@@ -30,8 +35,7 @@
               (slurp (real-path (str path "/_")))
               "")
    :date (.lastModified (io/file (real-path path)))
-   }
-  )
+   })
 
 (defn parse-file [path]
   {:isdir false
@@ -39,8 +43,7 @@
    :name (replace path #"^.*/|.mz$" "")
    :content (slurp (real-path path))
    :date (.lastModified (io/file (real-path path)))
-   }
-  )
+   })
 
 (defn parse-request [uri]
   (try
@@ -49,32 +52,38 @@
 
       (if (.isDirectory (io/file decoded))
         (parse-directory decoded)
-        (parse-file decoded))
-      )
+        (parse-file decoded)))
+
     (catch Exception e
       (parse-directory ""))
   ))
 
-
+(defn apply-extensions [pinfo]
+  (-> (:content pinfo)
+      (ext/markdown)
+      (ext/world)
+      ))
 
 (defn render [request]
-  (println "parse-path : " (parse-request "/"))
-  (let [template (index-file)
-        parsed (parse-request (:uri request))
-        ]
+  (if (some? (re-matches #"favicon.ico" (:uri request)))
+    ""
+    (let [template (index-file)
+          pinfo (parse-request (:uri request))]
 
-    (-> template
-        (replace #"__PAGE_NAME__" (str "<h3>" (:name parsed)"</h3>"))
-        (replace #"__PAGE_CONTENT__" (str "<p>" (:content parsed)"</p>"))
-        (replace #"__PAGE_DATE__" (str "<small>" (:date parsed) "</small>"))
-;;        (replace #"__PATH__" (current-pagepath dpath))
-        )))
+      ;왜 안되지.
+      ;(assoc pinfo :content (apply-extensions pinfo))
+
+      (-> template
+          (replace #"__PAGE_NAME__" (str "<h3>" (:name pinfo)"</h3>"))
+          (replace #"__PAGE_CONTENT__" (str "<p>" (apply-extensions pinfo)"</p>"))
+          (replace #"__PAGE_DATE__" (str "<small>" (:date pinfo) "</small>"))
+          (replace #"__PATH__" (:path pinfo))
+          ))))
 
 (defn handler [request]
   {:status 200
    :headers {"Content-Type" "text/html"}
       :body (render request)})
-
 
 (defn -main
   [& args]
