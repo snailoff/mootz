@@ -6,9 +6,7 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [compojure.core :refer :all]
-            [compojure.route :as route]
-            [hawk.core :as hawk]
-            )
+            [compojure.route :as route])
 
   (:use ring.adapter.jetty))
 
@@ -89,15 +87,5 @@
 
 
 (defn -main
-  [& args]
-;;  (hawk/watch! [{:paths [(:rootpath config)]
-;;                 :handler (fn [ctx e]
-;;                            (println "event: "
-;;                                     (.getAbsolutePath (:file e))
-;;                                     (:kind e)
-;;                                     ctx)
-;;                            ctx)}])
-
-  (run-jetty app {:port 3000})
-  )
+  [& args] (run-jetty app {:port 3000}))
 
