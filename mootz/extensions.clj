@@ -1,5 +1,5 @@
 (ns mootz.extensions
-  (:refer [clojure.string :as str])
+  (:require [clojure.string :as str])
   (:use markdown.core))
 
 (defn markdown [content]
