@@ -1,11 +1,12 @@
 (ns mootz.extensions
+  (:refer [clojure.string :as str])
   (:use markdown.core))
 
 (defn markdown [content]
   (md-to-html-string content))
 
 (defn world [content]
-  (clojure.string/replace content
-                          #"@world (.*?)@"
-                          (str "'hi " "$1" " world'")))
+  (str/replace content
+               #"@world (.*?)@"
+               (str "'hi " "$1" " world'")))
 

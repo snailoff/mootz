@@ -4,7 +4,9 @@
             [base64-clj.core :as base64]
             [clojure.edn]
             [clojure.java.io :as io]
-            [clojure.string :refer :all]
+            [clojure.string :as str]
+            [compojure.core :refer :all]
+            [compojure.route :as route]
             [hawk.core :as hawk]
             )
 
@@ -21,16 +23,16 @@
          path))
 
 (defn current-pagepath [path]
-    (join "<br />"
+    (str/join "<br />"
           (map #(str "<b>" %1 "</b>")
-               (split path #"/"))))
+               (str/split path #"/"))))
 
 
 
 (defn parse-directory [path]
   {:isdir true
    :path path
-   :name (if (= path "") (:rootname config) (replace path #".*/" ""))
+   :name (if (= path "") (:rootname config) (str/replace path #".*/" ""))
    :content (if (.exists (io/file (real-path (str path "/_"))))
               (slurp (real-path (str path "/_")))
               "")
@@ -40,7 +42,7 @@
 (defn parse-file [path]
   {:isdir false
    :path path
-   :name (replace path #"^.*/|.mz$" "")
+   :name (str/replace path #"^.*/|.mz$" "")
    :content (slurp (real-path path))
    :date (.lastModified (io/file (real-path path)))
    })
@@ -74,27 +76,28 @@
       ;(assoc pinfo :content (apply-extensions pinfo))
 
       (-> template
-          (replace #"__PAGE_NAME__" (str "<h3>" (:name pinfo)"</h3>"))
-          (replace #"__PAGE_CONTENT__" (str "<p>" (apply-extensions pinfo)"</p>"))
-          (replace #"__PAGE_DATE__" (str "<small>" (:date pinfo) "</small>"))
-          (replace #"__PATH__" (:path pinfo))
+          (str/replace #"__PAGE_NAME__" (str "<h3>" (:name pinfo)"</h3>"))
+          (str/replace #"__PAGE_CONTENT__" (str "<p>" (apply-extensions pinfo)"</p>"))
+          (str/replace #"__PAGE_DATE__" (str "<small>" (:date pinfo) "</small>"))
+          (str/replace #"__PATH__" (:path pinfo))
           ))))
 
-(defn handler [request]
-  {:status 200
-   :headers {"Content-Type" "text/html"}
-      :body (render request)})
+(defroutes app
+  (GET "/" request (render request))
+  (route/resources "/")
+  (route/not-found "<h1>Page not found</h1>"))
+
 
 (defn -main
   [& args]
-  (hawk/watch! [{:paths [(:rootpath config)]
-                 :handler (fn [ctx e]
-                            (println "event: "
-                                     (.getAbsolutePath (:file e))
-                                     (:kind e)
-                                     ctx)
-                            ctx)}])
+;;  (hawk/watch! [{:paths [(:rootpath config)]
+;;                 :handler (fn [ctx e]
+;;                            (println "event: "
+;;                                     (.getAbsolutePath (:file e))
+;;                                     (:kind e)
+;;                                     ctx)
+;;                            ctx)}])
 
-;;  (run-jetty handler {:port 3000})
+  (run-jetty app {:port 3000})
   )
 
