@@ -1,3 +1,2 @@
-{:rootpath "resources/public/root"
- :rootname "monologue"
+{:rootname "monologue"
  :theme "minimal"}

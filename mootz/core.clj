@@ -18,8 +18,7 @@
 (def index-file (slurp (str "resources/themes/" (:theme config) "/index.html")))
 
 (defn full-path [path]
-  (str (str/replace (:rootpath config) #"/+$" "")
-         (str "/" path)))
+  (str "resources/public/root/" path))
 
 (defn date-string [path]
   (if (.exists (io/file path))
@@ -43,7 +42,7 @@
 (defn parse-directory [path]
   {:isdir true
    :path path
-   :name (if (= path "") (:rootname config)
+   :name (if (= path ".") (:rootname config)
              (str/replace path #".*/" ""))
    :content (apply-extensions (util/slurp-exists (full-path (str path "/_"))))
    :date (date-string (full-path path))
