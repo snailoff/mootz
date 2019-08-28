@@ -34,15 +34,40 @@
       (ext/world)
       ))
 
-(defn current-pagepath [path]
+(defn depth [path]
+  (let [cpath (if (= path ".") path (str "./" path))]
     (str/join "<br />"
-          (map #(str "<b>" %1 "</b>")
-               (str/split path #"/"))))
+              (map #(str "<a href=\"" %1 "\">"
+                         (str/replace %1 #"^.*/" "")
+                         "</a>")
+                   (loop [p path
+                          result []]
+                     (if (= p "")
+                       (reverse result)
+                       (recur (str/replace p #"/?[^/]*?$" "")
+                              (conj result p))))
+    ))))
+
+(defn file-list [path]
+  (str (str/join "<br />"
+                 (map #(str "<a href=\"#\">"
+                            (str/replace %1 #"^.*/" "")
+                            "</a>")
+                      (filter #(.isDirectory %)
+                              (.listFiles (io/file (full-path path))))))
+       "<br />"
+       (str/join "<br />"
+                 (map #(str "- <a href=\"#\">"
+                            (str/replace %1 #"^.*/" "")
+                            "</a>")
+                      (filter #(.endsWith (.getName %) ".mz")
+                      (.listFiles (io/file (full-path path))))))))
 
 (defn parse-directory [path]
   {:isdir true
-   :path path
-   :name (if (= path ".") (:rootname config)
+   :depth (depth path)
+   :list (file-list path)
+   :name (if (= path ".") "/"
              (str/replace path #".*/" ""))
    :content (apply-extensions (util/slurp-exists (full-path (str path "/_"))))
    :date (date-string (full-path path))
@@ -50,10 +75,11 @@
 
 (defn parse-file [path]
   {:isdir false
-   :path path
+   :depth (depth (str/replace path #"/?[^/]*?.mz$" ""))
+   :list (file-list (str/replace path #"/?[^/]*?.mz$" ""))
    :name (str/replace path #"^.*/|.mz$" "")
    :content (apply-extensions (slurp (full-path path)))
-   :date (.lastModified (io/file (full-path path)))
+   :date (date-string (full-path path))
    })
 
 (defn parse-request [path]
@@ -76,16 +102,18 @@
 (defn render [request]
   (if (some? (re-matches #"favicon.ico" (:uri request)))
     ""
-    (let [pinfo (parse-request (decode-path (:uri request)))]
+;    (let [pinfo (parse-request (decode-path (:uri request)))]
+     (let [pinfo (parse-request (str/replace (:uri request) #"^/*|/*$" ""))]
 
       ;왜 안되지.
       ;(assoc pinfo :content (apply-extensions pinfo))
 
       (-> index-file
-          (str/replace #"__PAGE_NAME__" (str "<h3>" (:name pinfo)"</h3>"))
-          (str/replace #"__PAGE_CONTENT__" (str "<p>" (:content pinfo)"</p>"))
-          (str/replace #"__PAGE_DATE__" (str "<small>" (:date pinfo) "</small>"))
-          (str/replace #"__PATH__" (:path pinfo))
+          (str/replace #"__PAGE_NAME__" (:name pinfo))
+          (str/replace #"__PAGE_CONTENT__" (:content pinfo))
+          (str/replace #"__PAGE_DATE__" (:date pinfo))
+          (str/replace #"__DEPTH__" (:depth pinfo))
+          (str/replace #"__LIST__" (:list pinfo))
           ))))
 
 (defroutes app
