@@ -5,6 +5,7 @@
                  [markdown-clj "1.10.0"]
                  [org.clojure/clojure "1.10.0"]
                  [ring "1.7.1"]
+                 [ring/ring-codec "1.1.2"]
                  [ring/ring-jetty-adapter "1.6.3"]]
 
   :plugins [[lein-ring "0.12.5"]]

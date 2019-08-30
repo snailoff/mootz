@@ -9,7 +9,8 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [compojure.core :refer :all]
-            [compojure.route :as route])
+            [compojure.route :as route]
+            [ring.util.codec :as codec])
 
   (:use ring.adapter.jetty))
 
@@ -41,9 +42,11 @@
         (str/join " <br /> "
                   (map #(if (= %1 "")
                           ". <a href=\"/\"><b>root</b></a>"
-                          (str ". <a href=\"" %1 "\"><b>"
-                            (str/replace %1 #"^.*/" "")
-                            "</b></a>"))
+                          (str ". <a href=\""
+                               %1
+                               "\"><b>"
+                               (str/replace %1 #"^.*/" "")
+                               "</b></a>"))
                       (loop [p path
                               result []]
                         (if (= p "")
@@ -55,7 +58,7 @@
 (defn file-list [path]
   (str (str/join " . "
                  (map #(str "<a href=\""
-                            (str/replace %1 #"^.*/root/" "/")
+                             (str/replace %1 #"^.*/root/" "/")
                             "\"><b>"
                              (.getName %1)
                             "</b></a>")
@@ -64,7 +67,7 @@
         "<br />"
         (str/join " . "
                   (map #(str " <a href=\""
-                             (str/replace %1 #"^resources/public/root/" "/")
+                              (str/replace %1 #"^resources/public/root/" "/")
                              " \">"
                              (str/replace (.getName %1) #".mz$" "")
                             "</a>")
@@ -96,25 +99,12 @@
       (parse-directory uri)
       (parse-file uri))
 
-    (parse-directory ".")))
+    (parse-directory "")))
 
-
-(defn decode-path [encoded]
-  (try (let [decoded (base64/decode (str/replace encoded #"^/+|/+$" ""))]
-         (if (= decoded "")
-           "."
-           decoded)
-         )
-       (catch Exception e "exception")))
-
-(defn render [request]
-  (if (some? (re-matches #"favicon.ico" (:uri request)))
+(defn render [uri]
+  (if (some? (re-matches #"favicon.ico" uri))
     ""
-;    (let [pinfo (parse-request (decode-path (:uri request)))]
-     (let [pinfo (parse-request (str/replace (:uri request) #"/*$" ""))]
-
-      ;왜 안되지.
-      ;(assoc pinfo :content (apply-extensions pinfo))
+     (let [pinfo (parse-request (str/replace (codec/url-decode uri) #"/*$" ""))]
 
       (-> (index-file)
           (str/replace #"__PAGE_NAME__" (:name pinfo))
@@ -125,7 +115,7 @@
           ))))
 
 (defroutes app
-  (GET "/*" request (render request))
+  (GET "/*" request (render (:uri request)))
   (route/resources "/")
   (route/not-found "<h1>Page not found</h1>"))
 
