@@ -5,7 +5,6 @@
             [base64-clj.core :as base64]
             [clj-time.format :as timef]
             [clj-time.coerce :as timec]
-            [clojure.edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [compojure.core :refer :all]
@@ -14,9 +13,7 @@
 
   (:use ring.adapter.jetty))
 
-(def config (clojure.edn/read-string (slurp "config.edn")))
-
-(defn index-file [] (slurp (str "resources/themes/" (:theme config) "/index.html")))
+(defn index-file [] (slurp (str "resources/template/index.html")))
 
 (defn full-path [path]
   (str "resources/public/root/" path))
