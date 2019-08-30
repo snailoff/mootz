@@ -38,10 +38,10 @@
   (let [cpath (if (= path ".")
                 path
                 (str "./" path))]
-        (str/join " . "
+        (str/join " <br /> "
                   (map #(if (= %1 "")
-                          "> <a href=\"/\"><b>root</b></a>"
-                          (str "<a href=\"" %1 "\"><b>"
+                          ". <a href=\"/\"><b>root</b></a>"
+                          (str ". <a href=\"" %1 "\"><b>"
                             (str/replace %1 #"^.*/" "")
                             "</b></a>"))
                       (loop [p path
@@ -75,7 +75,7 @@
   {:isdir true
    :depth (depth uri)
    :list (file-list uri)
-   :name (if (= uri "") "/"
+   :name (if (= uri "") "root"
              (str/replace uri #".*/" ""))
    :content (apply-extensions (util/slurp-exists (full-path (str uri "/_"))))
    :date (date-string (full-path uri))
