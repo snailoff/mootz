@@ -11,7 +11,8 @@
             [compojure.route :as route]
             [ring.util.codec :as codec])
 
-  (:use ring.adapter.jetty))
+  (:use ring.adapter.jetty
+        ring.middleware.params))
 
 (defn index-file [] (slurp (str "resources/template/index.html")))
 
@@ -36,10 +37,10 @@
   (let [cpath (if (= path ".")
                 path
                 (str "./" path))]
-        (str/join " <br /> "
+        (str/join " - "
                   (map #(if (= %1 "")
-                          ". <a href=\"/\"><b>root</b></a>"
-                          (str ". <a href=\""
+                          "<a href=\"/\"><b>root</b></a>"
+                          (str "<a href=\""
                                %1
                                "\"><b>"
                                (str/replace %1 #"^.*/" "")
@@ -53,15 +54,17 @@
                       ))))
 
 (defn file-list [path]
-  (str (str/join " . "
+  (str ". "
+       (str/join " . "
                  (map #(str "<a href=\""
                              (str/replace %1 #"^.*/root/" "/")
-                            "\"><b>"
+                            "\">"
                              (.getName %1)
-                            "</b></a>")
+                            "</a>")
                       (filter #(.isDirectory %)
                               (.listFiles (io/file (full-path path))))))
         "<br />"
+        ". "
         (str/join " . "
                   (map #(str " <a href=\""
                               (str/replace %1 #"^resources/public/root/" "/")
@@ -99,24 +102,30 @@
     (parse-directory "")))
 
 (defn render [uri]
-  (if (some? (re-matches #"favicon.ico" uri))
-    ""
-     (let [pinfo (parse-request (str/replace (codec/url-decode uri) #"/*$" ""))]
+  (let [pinfo (parse-request (str/replace (codec/url-decode uri) #"/*$" ""))]
+    (-> (index-file)
+        (str/replace #"__PAGE_NAME__" (:name pinfo))
+        (str/replace #"__PAGE_CONTENT__" (:content pinfo))
+        (str/replace #"__PAGE_DATE__" (:date pinfo))
+        (str/replace #"__DEPTH__" (:depth pinfo))
+        (str/replace #"__LIST__" (:list pinfo))
+        )))
 
-      (-> (index-file)
-          (str/replace #"__PAGE_NAME__" (:name pinfo))
-          (str/replace #"__PAGE_CONTENT__" (:content pinfo))
-          (str/replace #"__PAGE_DATE__" (:date pinfo))
-          (str/replace #"__DEPTH__" (:depth pinfo))
-          (str/replace #"__LIST__" (:list pinfo))
-          ))))
+(defn action [request]
+  (ring.util.response/redirect (:uri request))
+  )
 
 (defroutes app
-  (GET "/*" request (render (:uri request)))
-  (route/resources "/")
-  (route/not-found "<h1>Page not found</h1>"))
+   (GET "/favicon.ico" [] "ok")
+   (POST "/*" request (action request))
+   (GET "/*" request (render (:uri request)))
+   (route/resources "/")
+   (route/not-found "<h1>Page not found</h1>"))
+
+(def app-handler
+  (-> app wrap-params))
 
 
 (defn -main
-  [& args] (run-jetty app {:port 3000}))
+  [& args] (run-jetty (-> app wrap-params) {:port 3000}))
 

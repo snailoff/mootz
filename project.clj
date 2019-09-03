@@ -6,6 +6,7 @@
                  [org.clojure/clojure "1.10.0"]
                  [ring "1.7.1"]
                  [ring/ring-codec "1.1.2"]
+                 [ring/ring-json "0.5.0"]
                  [ring/ring-jetty-adapter "1.6.3"]]
 
   :plugins [[lein-ring "0.12.5"]]
@@ -15,6 +16,6 @@
   :aot [mootz.core]
   :clean-targets ^{:protect false} ["target"]
 
-  :ring {:handler mootz.core/app}
+  :ring {:handler mootz.core/app-handler}
   )
 

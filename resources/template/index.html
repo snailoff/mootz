@@ -5,34 +5,29 @@
     <head>
         <link rel="shortcut icon" href="/static/favicon.ico">
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
+         <style>
+         @import url(http://fonts.googleapis.com/earlyaccess/notosanskr.css);
+         * { font-family: 'Noto Sans KR', sans-serif; }
+
+        </style>
     </head>
     <body>
         <div class="container">
             <div class="row">
-                <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12">
-                    <h2>mootz</h2>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-xs-12 col-sm-3 col-md-3 col-lg-3">
-                    <p></p>
+                <div class="col-xs-12 col-sm-8 col-sm-offset-2 col-lg-6 col-lg-offset-3">
+                    <h4>monologue</h4>
                     <p class="">__DEPTH__</p>
                     <p class="">__LIST__</p>
-                </div>
 
-                <div class="col-xs-12 col-sm-8 col-md-8 col-lg-6">
-                    <h2>__PAGE_NAME__</h2>
-                    __PAGE_CONTENT__
-                    <small class="pull-right">__PAGE_DATE__</small>
-                </div>
-            </div>
+                    <section>
+                        <h2>__PAGE_NAME__</h2>
+                        <section>__PAGE_CONTENT__</section>
+                        <p><small>__PAGE_DATE__</small></p>
+                    </section>
 
-            <div class="row">
-                <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12">
-                    <small><b>powered by mootz</b></small>
+                    <p> <small><b>powered by mootz</b></small></p>
                 </div>
             </div>
-
         </main>
     </body>
 </html>
