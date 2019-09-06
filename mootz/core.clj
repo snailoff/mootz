@@ -1,115 +1,96 @@
 (ns mootz.core
   (:gen-class)
   (:require [mootz.extensions :as ext]
-            [mootz.util :as util]
+            [mootz.private :as prv]
             [base64-clj.core :as base64]
             [clj-time.format :as timef]
             [clj-time.coerce :as timec]
             [clojure.java.io :as io]
-            [clojure.string :as str]
+            [clojure.string :as string]
             [compojure.core :refer :all]
-            [compojure.route :as route]
-            [ring.util.codec :as codec])
+            [compojure.route :as route])
 
   (:use ring.adapter.jetty
         ring.middleware.params))
 
 (defn index-file [] (slurp (str "resources/template/index.html")))
 
-(defn date-string [path]
-  (if (.exists (io/file path))
-    (let [date (.lastModified (io/file path))]
-      (-> (timef/unparse (timef/formatter "yyyyMMdd hhmmss") (timec/from-long date))))
-    "00000000 000000"))
 
+(defn r-name [uri]
+  (if (= uri "")
+    "root"
+    (string/replace uri #"^.*/" "")))
 
+(defn r-depth [uri]
+  (let [dir (if (prv/is-dir? uri)
+              uri
+              (string/replace uri #"/?[^/]*$" ""))]
+    (string/join " - "
+              (map #(if (= %1 "")
+                      "<a href=\"/\"><b>root</b></a>"
+                      (str "<a href=\""
+                           %1
+                           ".mz\"><b>"
+                           (string/replace %1 #"^.*/" "")
+                           "</b></a>"))
+                   (loop [p dir
+                          result []]
+                     (if (= p "")
+                       (reverse (conj result ""))
+                       (recur (string/replace p #"/?[^/]*?$" "")
+                              (conj result p))))
+                   ))))
 
-(defn depth [path]
-  (let [cpath (if (= path ".")
-                path
-                (str "./" path))]
-        (str/join " - "
-                  (map #(if (= %1 "")
-                          "<a href=\"/\"><b>root</b></a>"
-                          (str "<a href=\""
-                               %1
-                               ".mz\"><b>"
-                               (str/replace %1 #"^.*/" "")
-                               "</b></a>"))
-                      (loop [p path
-                              result []]
-                        (if (= p "")
-                          (reverse (conj result ""))
-                          (recur (str/replace p #"/?[^/]*?$" "")
-                                  (conj result p))))
-                      ))))
-
-(defn file-list [path]
-  (str (str/join " . "
+(defn r-list [uri]
+  (let [dir (if (prv/is-dir? uri)
+              uri
+              (string/replace uri #"/?[^/]*$" ""))]
+      (str (string/join " . "
                  (map #(str "<b><a href=\""
-                             (str/replace %1 #"^.*/root/" "/")
+                             (string/replace %1 #"^.*/root/" "/")
                             ".mz\">"
                              (.getName %1)
                             "</a></b>")
                       (sort
                        (filter #(.isDirectory %)
-                               (.listFiles (io/file (util/full-path path))))))
+                               (.listFiles (io/file (prv/full-path dir))))))
                        )
         "<br />"
-        (str/join " . "
+        (string/join " . "
                   (map #(str " <a href=\""
-                              (str/replace %1 #"^resources/public/root/" "/")
+                              (string/replace %1 #"^resources/public/root/" "/")
                              ".mz\">"
-                             (str/replace (.getName %1) #".md$" "")
+                             (string/replace (.getName %1) #".md$" "")
                             "</a>")
                        (filter #(not (or (.isDirectory %)
-                                         (str/includes? % ".")
-                                         (str/ends-with? % "/_")
+                                         (string/includes? % ".")
+                                         (string/ends-with? % "/_")
                                          ))
-                              (.listFiles (io/file (util/full-path path))))))))
+                              (.listFiles (io/file (prv/full-path dir)))))))))
 
-(defn get-content [uri]
-  (let [content (util/slurp-exists (util/full-path uri))]
+(defn r-content [uri]
+  (let [path (if (prv/is-dir? uri) (str uri "/_") uri)
+        content (prv/slurp-exists (prv/full-path path))]
     (-> content
         (ext/markdown)
         (ext/world)
         (ext/images uri))
     ))
 
-(defn parse-directory [uri]
-  {:depth (depth uri)
-   :list (file-list uri)
-   :name (if (= uri "") "root"
-             (str/replace uri #".*/" ""))
-   :content (get-content (str uri "/_"))
-   :date (date-string (util/full-path uri))
-   })
-
-(defn parse-file [uri]
-  {:depth (depth (str/replace uri #"/?[^/]*$" ""))
-   :list (file-list (str/replace uri #"/?[^/]*?$" ""))
-   :name (str/replace uri #"^.*/" "")
-   :content (get-content uri)
-   :date (date-string (util/full-path uri))
-   })
-
-(defn parse-request [uri]
-  (if (.exists (io/file (util/full-path uri)))
-    (if (.isDirectory (io/file (util/full-path uri)))
-      (parse-directory uri)
-      (parse-file uri))
-
-    (parse-directory "")))
+(defn r-date [path]
+  (if (.exists (io/file path))
+    (let [date (.lastModified (io/file path))]
+      (-> (timef/unparse (timef/formatter "yyyyMMdd hhmmss") (timec/from-long date))))
+    "00000000 000000"))
 
 (defn render [rawuri]
-  (let [uri (str/replace (codec/url-decode rawuri) #".mz$" "")
-        pinfo (parse-request uri)]
+  (let [uri (prv/valid-uri rawuri)]
     (-> (index-file)
-        (str/replace #"__PAGE_NAME__" (:name pinfo))
-        (str/replace #"__PAGE_CONTENT__" (:content pinfo))
-        (str/replace #"__PAGE_DATE__" (:date pinfo))
-        (str/replace #"__DEPTH__" (:depth pinfo))
-        (str/replace #"__LIST__" (:list pinfo))
+        (string/replace #"__PAGE_NAME__" (r-name uri))
+        (string/replace #"__DEPTH__" (r-depth uri))
+        (string/replace #"__LIST__" (r-list uri))
+        (string/replace #"__PAGE_CONTENT__" (r-content uri))
+        (string/replace #"__PAGE_DATE__" (r-date (prv/full-path uri)))
         )))
 
 (defn action [request]
