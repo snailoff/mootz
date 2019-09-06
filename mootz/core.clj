@@ -73,7 +73,6 @@
         content (prv/slurp-exists (prv/full-path path))]
     (-> content
         (ext/markdown)
-        (ext/world)
         (ext/images uri))
     ))
 

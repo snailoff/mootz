@@ -1,6 +1,7 @@
 (ns mootz.private
   (:require [clojure.java.io :as io]
-            [clojure.string :as string]))
+            [clojure.string :as string]
+            [ring.util.codec :as codec]))
 
 (defn slurp-exists [path]
   (if (.exists (io/file path))
