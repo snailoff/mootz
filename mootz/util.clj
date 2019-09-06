@@ -7,3 +7,5 @@
     ""
     ))
 
+(defn full-path [path]
+  (str "resources/public/root/" path))

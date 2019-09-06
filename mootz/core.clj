@@ -16,22 +16,13 @@
 
 (defn index-file [] (slurp (str "resources/template/index.html")))
 
-(defn full-path [path]
-  (str "resources/public/root/" path))
-
 (defn date-string [path]
   (if (.exists (io/file path))
     (let [date (.lastModified (io/file path))]
-      (-> (timef/unparse (timef/formatter "yyyyMMdd hhmmss") (timec/from-long date))
-          (str/replace #"0" "o")))
-    "oooooooo oooooo"))
+      (-> (timef/unparse (timef/formatter "yyyyMMdd hhmmss") (timec/from-long date))))
+    "00000000 000000"))
 
 
-(defn apply-extensions [content]
-  (-> content
-      (ext/markdown)
-      (ext/world)
-      ))
 
 (defn depth [path]
   (let [cpath (if (= path ".")
@@ -42,7 +33,7 @@
                           "<a href=\"/\"><b>root</b></a>"
                           (str "<a href=\""
                                %1
-                               "\"><b>"
+                               ".mz\"><b>"
                                (str/replace %1 #"^.*/" "")
                                "</b></a>"))
                       (loop [p path
@@ -54,55 +45,65 @@
                       ))))
 
 (defn file-list [path]
-  (str ". "
-       (str/join " . "
-                 (map #(str "<a href=\""
+  (str (str/join " . "
+                 (map #(str "<b><a href=\""
                              (str/replace %1 #"^.*/root/" "/")
-                            "\">"
+                            ".mz\">"
                              (.getName %1)
-                            "</a>")
-                      (filter #(.isDirectory %)
-                              (.listFiles (io/file (full-path path))))))
+                            "</a></b>")
+                      (sort
+                       (filter #(.isDirectory %)
+                               (.listFiles (io/file (util/full-path path))))))
+                       )
         "<br />"
-        ". "
         (str/join " . "
                   (map #(str " <a href=\""
                               (str/replace %1 #"^resources/public/root/" "/")
-                             " \">"
+                             ".mz\">"
                              (str/replace (.getName %1) #".md$" "")
                             "</a>")
-                      (filter #(.endsWith (.getName %) ".md")
-                              (.listFiles (io/file (full-path path))))))))
+                       (filter #(not (or (.isDirectory %)
+                                         (str/includes? % ".")
+                                         (str/ends-with? % "/_")
+                                         ))
+                              (.listFiles (io/file (util/full-path path))))))))
+
+(defn get-content [uri]
+  (let [content (util/slurp-exists (util/full-path uri))]
+    (-> content
+        (ext/markdown)
+        (ext/world)
+        (ext/images uri))
+    ))
 
 (defn parse-directory [uri]
-  {:isdir true
-   :depth (depth uri)
+  {:depth (depth uri)
    :list (file-list uri)
    :name (if (= uri "") "root"
              (str/replace uri #".*/" ""))
-   :content (apply-extensions (util/slurp-exists (full-path (str uri "/_"))))
-   :date (date-string (full-path uri))
+   :content (get-content (str uri "/_"))
+   :date (date-string (util/full-path uri))
    })
 
 (defn parse-file [uri]
-  {:isdir false
-   :depth (depth (str/replace uri #"/?[^/]*?.md$" ""))
-   :list (file-list (str/replace uri #"/?[^/]*?.md$" ""))
-   :name (str/replace uri #"^.*/|.md$" "")
-   :content (apply-extensions (slurp (full-path uri)))
-   :date (date-string (full-path uri))
+  {:depth (depth (str/replace uri #"/?[^/]*$" ""))
+   :list (file-list (str/replace uri #"/?[^/]*?$" ""))
+   :name (str/replace uri #"^.*/" "")
+   :content (get-content uri)
+   :date (date-string (util/full-path uri))
    })
 
 (defn parse-request [uri]
-  (if (.exists (io/file (full-path uri)))
-    (if (.isDirectory (io/file (full-path uri)))
+  (if (.exists (io/file (util/full-path uri)))
+    (if (.isDirectory (io/file (util/full-path uri)))
       (parse-directory uri)
       (parse-file uri))
 
     (parse-directory "")))
 
-(defn render [uri]
-  (let [pinfo (parse-request (str/replace (codec/url-decode uri) #"/*$" ""))]
+(defn render [rawuri]
+  (let [uri (str/replace (codec/url-decode rawuri) #".mz$" "")
+        pinfo (parse-request uri)]
     (-> (index-file)
         (str/replace #"__PAGE_NAME__" (:name pinfo))
         (str/replace #"__PAGE_CONTENT__" (:content pinfo))
@@ -116,11 +117,11 @@
   )
 
 (defroutes app
-   (GET "/favicon.ico" [] "ok")
-   (POST "/*" request (action request))
-   (GET "/*" request (render (:uri request)))
-   (route/resources "/")
-   (route/not-found "<h1>Page not found</h1>"))
+  (GET "/" request (render ""))
+  (GET "/*.mz" request (render (:uri request)))
+  (route/resources "/" {:root "/public/root"})
+  (route/files "/" {:root "/public/root"})
+  (route/not-found "<h1>Page not found</h1>"))
 
 (def app-handler
   (-> app wrap-params))
