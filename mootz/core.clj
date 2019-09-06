@@ -69,9 +69,9 @@
                   (map #(str " <a href=\""
                               (str/replace %1 #"^resources/public/root/" "/")
                              " \">"
-                             (str/replace (.getName %1) #".mz$" "")
+                             (str/replace (.getName %1) #".md$" "")
                             "</a>")
-                      (filter #(.endsWith (.getName %) ".mz")
+                      (filter #(.endsWith (.getName %) ".md")
                               (.listFiles (io/file (full-path path))))))))
 
 (defn parse-directory [uri]
@@ -86,9 +86,9 @@
 
 (defn parse-file [uri]
   {:isdir false
-   :depth (depth (str/replace uri #"/?[^/]*?.mz$" ""))
-   :list (file-list (str/replace uri #"/?[^/]*?.mz$" ""))
-   :name (str/replace uri #"^.*/|.mz$" "")
+   :depth (depth (str/replace uri #"/?[^/]*?.md$" ""))
+   :list (file-list (str/replace uri #"/?[^/]*?.md$" ""))
+   :name (str/replace uri #"^.*/|.md$" "")
    :content (apply-extensions (slurp (full-path uri)))
    :date (date-string (full-path uri))
    })
