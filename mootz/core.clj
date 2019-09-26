@@ -79,8 +79,8 @@
 (defn r-date [path]
   (if (.exists (io/file path))
     (let [date (.lastModified (io/file path))]
-      (-> (timef/unparse (timef/formatter "yyyyMMdd hhmmss") (timec/from-long date))))
-    "00000000 000000"))
+      (-> (timef/unparse (timef/formatter "yyyy.MM.dd. hh:mm:ss") (timec/from-long date))))
+    "0000.00.00. 00:00:00"))
 
 (defn render [rawuri]
   (let [uri (prv/valid-uri rawuri)]
