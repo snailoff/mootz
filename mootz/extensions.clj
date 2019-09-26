@@ -26,6 +26,17 @@
                                               (map #(string/replace %1 #"^resources/public/root/" "/")
                                                    (.listFiles (io/file (prv/full-path dir))))))))))
 
+(defn image [content uri]
+  (let [dir (if (prv/is-dir? uri)
+              uri
+              (string/replace uri #"/?[^/]*$" ""))]
+    (string/replace content
+                    #"@image (.*?)@"
+                    (str "<p><img src=\""
+                         "$1"
+                         "\" class=\"img-fluid\""
+                         " /></p>"))))
+
 ;(defn comment [content]
 ;  (string/replace content
 ;               #"@commet@"

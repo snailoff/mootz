@@ -73,7 +73,8 @@
         content (prv/slurp-exists (prv/full-path path))]
     (-> content
         (ext/markdown)
-        (ext/images uri))
+        (ext/images uri)
+        (ext/image uri))
     ))
 
 (defn r-date [path]
