@@ -8,16 +8,16 @@
 # install
 
 1. [leiningen](https://leiningen.org) 설치.
-2. git clone https://github.com/snailoff/mootz
-3. cd mootz
-4. `lein ring server` 실행.
+2. `git clone https://github.com/snailoff/mootz`
+3. `cd mootz`
+4. `lein ring server` 
 
 # rule
 
-* 'mootz/resources/public/root' 가 최상위 경로가 된다.
+* `mootz/resources/public/root` 가 최상위 경로가 된다.
 * 디렉토리는 directory list에 모두 표현된다.
 * 확장자가 없는 파일만 file list 에 표현된다. 
-* _ 파일은 디렉토리의 기본 페이지이며 파일리스트에서 리스트되지 않는다.
+* `_` 파일은 디렉토리의 기본 페이지이며 파일리스트에서 리스트되지 않는다.
 
 
 # extension
